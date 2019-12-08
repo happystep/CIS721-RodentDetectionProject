@@ -40,12 +40,12 @@ IM_HEIGHT = 720
 # Select camera type (if user enters --usbcam when calling this script,
 # a USB webcam will be used)
 camera_type = 'picamera'
-parser = argparse.ArgumentParser()
-parser.add_argument('--usbcam', help='Use a USB webcam instead of picamera',
-                    action='store_true')
-args = parser.parse_args()
-if args.usbcam:
-    camera_type = 'usb'
+# parser = argparse.ArgumentParser()
+# parser.add_argument('--usbcam', help='Use a USB webcam instead of picamera',
+#                     action='store_true')
+# args = parser.parse_args()
+# if args.usbcam:
+#     camera_type = 'usb'
 
 # This is needed since the working directory is the object_detection folder.
 sys.path.append('..')
@@ -114,34 +114,54 @@ freq = cv2.getTickFrequency()
 font = cv2.FONT_HERSHEY_SIMPLEX
 
 
-## HERE IS THE START OF MY CODE WHERE I WILL DEFINE/IMPLEMENT A PERIODIC TASK AND 
+## HERE IS THE START OF MY CODE WHERE I WILL DEFINE/IMPLEMENT A PERIODIC TASK 
 
-clock_x = 0 # this will work as the x clock. 
-
+clock_x = 0 # this will work as the x clock, we will hope for a frame per second, so it will be a clock tick per frame
+movement = False # the rats are not moving is the default
 
 def pet_detector(frame):
-    pass
 
+    global movement
+    global clock_x
 
+    # Perform the actual detection by running the model with the image as input
+    (boxes, scores, classes, num) = sess.run(
+        [detection_boxes, detection_scores, detection_classes, num_detections],
+        feed_dict={image_tensor: frame_expanded})
 
+    # increment the clock variable 
+    clock_x = clock_x + 1
 
+    # Draw the results of the detection (aka 'visulaize the results')
+    vis_util.visualize_boxes_and_labels_on_image_array(
+        frame,
+        np.squeeze(boxes),
+        np.squeeze(classes).astype(np.int32),
+        np.squeeze(scores),
+        category_index,
+        use_normalized_coordinates=True,
+        line_thickness=8,
+        min_score_thresh=0.40)
 
+    # if dog or cat, since it is recognizing my rats as cats. 
+    if (((int(classes[0][0]) == 17) or (int(classes[0][0] == 18) or (int(classes[0][0]) == 88))) and (pause == 0)):
+        x = int(((boxes[0][0][1]+boxes[0][0][3])/2)*IM_WIDTH)
+        y = int(((boxes[0][0][0]+boxes[0][0][2])/2)*IM_HEIGHT)
+        movement = True
+        # Draw a circle at center of object
+        cv2.circle(frame,(x,y), 5, (75,13,180), -1)
 
+    # if no movement in the 10 frames then we reset the clock
+    if clock_x >= 10 and not movement:
+        clock_x = 0
 
-s
+    if movement:
+        print("RAT HAS MOVED")
+        movement = False
 
-
-
-
-
-
-
-
-
-
-
-
-
+    return frame 
+    
+    
 
 # Initialize camera and perform object detection.
 # The camera has to be set up and used differently depending on if it's a
@@ -171,22 +191,10 @@ if camera_type == 'picamera':
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame_expanded = np.expand_dims(frame_rgb, axis=0)
 
-        # Perform the actual detection by running the model with the image as input
-        (boxes, scores, classes, num) = sess.run(
-            [detection_boxes, detection_scores, detection_classes, num_detections],
-            feed_dict={image_tensor: frame_expanded})
+        # call the periodic task on the frame, per frame we are ensuring a communication
+        frame = pet_detector(frame)
 
-        # Draw the results of the detection (aka 'visulaize the results')
-        vis_util.visualize_boxes_and_labels_on_image_array(
-            frame,
-            np.squeeze(boxes),
-            np.squeeze(classes).astype(np.int32),
-            np.squeeze(scores),
-            category_index,
-            use_normalized_coordinates=True,
-            line_thickness=8,
-            min_score_thresh=0.40)
-
+        # Draw FPS
         cv2.putText(frame,"FPS: {0:.2f}".format(frame_rate_calc),(30,50),font,1,(255,255,0),2,cv2.LINE_AA)
 
         # All the results have been drawn on the frame, so it's time to display it.
@@ -203,54 +211,6 @@ if camera_type == 'picamera':
         rawCapture.truncate(0)
 
     camera.close()
-
-### USB webcam ###
-elif camera_type == 'usb':
-    # Initialize USB webcam feed
-    camera = cv2.VideoCapture(0)
-    ret = camera.set(3,IM_WIDTH)
-    ret = camera.set(4,IM_HEIGHT)
-
-    while(True):
-
-        t1 = cv2.getTickCount()
-
-        # Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
-        # i.e. a single-column array, where each item in the column has the pixel RGB value
-        ret, frame = camera.read()
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_expanded = np.expand_dims(frame_rgb, axis=0)
-
-        # Perform the actual detection by running the model with the image as input
-        (boxes, scores, classes, num) = sess.run(
-            [detection_boxes, detection_scores, detection_classes, num_detections],
-            feed_dict={image_tensor: frame_expanded})
-
-        # Draw the results of the detection (aka 'visulaize the results')
-        vis_util.visualize_boxes_and_labels_on_image_array(
-            frame,
-            np.squeeze(boxes),
-            np.squeeze(classes).astype(np.int32),
-            np.squeeze(scores),
-            category_index,
-            use_normalized_coordinates=True,
-            line_thickness=8,
-            min_score_thresh=0.85)
-
-        cv2.putText(frame,"FPS: {0:.2f}".format(frame_rate_calc),(30,50),font,1,(255,255,0),2,cv2.LINE_AA)
-        
-        # All the results have been drawn on the frame, so it's time to display it.
-        cv2.imshow('Object detector', frame)
-
-        t2 = cv2.getTickCount()
-        time1 = (t2-t1)/freq
-        frame_rate_calc = 1/time1
-
-        # Press 'q' to quit
-        if cv2.waitKey(1) == ord('q'):
-            break
-
-    camera.release()
 
 cv2.destroyAllWindows()
 
