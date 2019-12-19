@@ -6,6 +6,9 @@ The goal of this project is to be able to detect movement (activity), monitor wa
 
 For installation instructions please follow the following repository: https://github.com/EdjeElectronics/TensorFlow-Object-Detection-on-the-Raspberry-Pi
 
+Original author https://github.com/EdjeElectronics/TensorFlow-Object-Detection-on-the-Raspberry-Pi
+
+Evan Juras 
 
 command to run the program on the pi is the following due to a current bug
  LD_PRELOAD=/usr/lib/arm-linux-gnueabihf/libatomic.so.1 python3 Object_detection_picamera.py
