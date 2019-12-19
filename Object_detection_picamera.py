@@ -143,7 +143,7 @@ def pet_detector(frame):
         line_thickness=8,
         min_score_thresh=0.40)
 
-    # if dog or cat, since it is recognizing my rats as cats. 
+    
     if (((int(classes[0][0]) == 17) or (int(classes[0][0] == 18) or (int(classes[0][0]) == 88)))):
         x = int(((boxes[0][0][1]+boxes[0][0][3])/2)*IM_WIDTH)
         y = int(((boxes[0][0][0]+boxes[0][0][2])/2)*IM_HEIGHT)
